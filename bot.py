@@ -3,11 +3,17 @@ from telebot import types
 import random
 import logging
 
-TOKEN1OtuCVSTSkNODZ5srU'
+TOKEN = '6452818475:AAFVsOYdqA1TGXZZpP_Cj6fCLDS2GvIagC8'
 
 logging.basicConfig(level=logging.INFO)
 
 bot = telebot.TeleBot(TOKEN)
+
+board_sizes = {
+    "3*3": 3,
+    "6*6": 6,
+    "8*8": 8,
+}
 
 rules_dict = {
     "П1": "🌟 Любые оскорбления и провокации запрещены [мут 60-180+варн]",
@@ -52,8 +58,8 @@ def send_all_rules(message):
 games = {}
 
 class TicTacToeGame:
-    def __init__(self, game_id, player_x):
-        self.game_board = [[' ' for _ in range(3)] for _ in range(3)]
+    def __init__(self, game_id, player_x, size):
+        self.game_board = [[' ' for _ in range(size)] for _ in range(size)]
         self.players = {'X': player_x, 'O': None}
         self.current_player = None
         self.player_symbols = {'X': '', 'O': ''}
@@ -61,29 +67,29 @@ class TicTacToeGame:
         self.game_active = False
         self.leave_button_added = False
         self.game_id = game_id
+        self.size = size
+        self.win_condition = size
 
     def render_board(self):
         keyboard = types.InlineKeyboardMarkup()
-        for row in range(3):
+        for row in range(self.size):
             buttons = []
-            for col in range(3):
+            for col in range(self.size):
                 symbol = self.player_symbols[self.game_board[row][col]] if self.game_board[row][col] in self.player_symbols else ' '
                 callback_data = f"move:{row}:{col}:{self.game_id}"
                 buttons.append(types.InlineKeyboardButton(text=symbol, callback_data=callback_data))
             keyboard.row(*buttons)
 
-        
-
         return keyboard
 
     def check_winner(self, sign):
         for row in self.game_board:
-            if row.count(sign) == 3:
+            if row.count(sign) == self.win_condition:
                 return True
-        for col in range(3):
-            if all(self.game_board[row][col] == sign for row in range(3)):
+        for col in range(self.size):
+            if all(self.game_board[row][col] == sign for row in range(self.size)):
                 return True
-        if all(self.game_board[i][i] == sign for i in range(3)) or all(self.game_board[i][2 - i] == sign for i in range(3)):
+        if all(self.game_board[i][i] == sign for i in range(self.size)) or all(self.game_board[i][self.size - 1 - i] == sign for i in range(self.size)):
             return True
         return False
 
@@ -106,18 +112,60 @@ def start_game(message):
     if chat_id not in games:
         games[chat_id] = {'count': 0, 'data': {}}
 
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    for size_label, size in board_sizes.items():
+        callback_data = f'choose_size:{size}:{user_id}'
+        button = types.InlineKeyboardButton(size_label, callback_data=callback_data)
+        markup.add(button)
+
+    bot.send_message(chat_id, "🔮 Выберите размер игрового поля:", reply_markup=markup)
+    
+@bot.callback_query_handler(func=lambda call: call.data.startswith('choose_size'))
+def choose_size(call):
+    chat_id = call.message.chat.id
+    user_id = call.from_user.id
+
+    size = int(call.data.split(':')[1])
+
     game_id = games[chat_id]['count']
     games[chat_id]['count'] += 1
 
-    new_game = TicTacToeGame(game_id, user_id)
+    new_game = TicTacToeGame(game_id, user_id, size)
     games[chat_id]['data'][game_id] = new_game
 
-    user = message.from_user
+    user = call.from_user
     new_game.player_names['X'] = user.first_name
 
     join_button = types.InlineKeyboardButton('🤝 Присоединиться', callback_data=f'join:{game_id}')
     markup = types.InlineKeyboardMarkup().add(join_button)
-    bot.send_message(chat_id, f"🎮 [{user.first_name}](tg://user?id={user.id}), ожидание второго игрока... 🕒", reply_markup=markup, parse_mode='Markdown')
+    msg = bot.edit_message_text(chat_id=chat_id, message_id=call.message.message_id, text=f"🎮 [{user.first_name}](tg://user?id={user.id}), ожидание второго игрока... 🕒\n⬜ Размер поля: {size}x{size}", reply_markup=markup, parse_mode='Markdown')
+
+    new_game.message_id = msg.message_id
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('join'))
+def join_game(call):
+    chat_id = call.message.chat.id
+    user_id = call.from_user.id
+    game_id = int(call.data.split(':')[1])
+
+    current_game = games[chat_id]['data'].get(game_id)
+
+    if current_game and not current_game.game_active and current_game.players['O'] is None and user_id != current_game.players['X']:
+        current_game.players['O'] = user_id
+        current_game.player_names['O'] = call.from_user.first_name
+        current_game.current_player = random.choice(['X', 'O'])
+        current_game.player_symbols['X'] = '❌' if random.random() < 0.5 else '⭕'
+        current_game.player_symbols['O'] = '⭕' if current_game.player_symbols['X'] == '❌' else '❌'
+
+        markup = current_game.render_board()
+
+        text = f"🔪  [{current_game.player_names['X']}](tg://user?id={current_game.players['X']}) {current_game.player_symbols['X']} против [{current_game.player_names['O']}](tg://user?id={current_game.players['O']})  {current_game.player_symbols['O']} 🗡️\n\n⏳ Текущий ход: [{current_game.player_names[current_game.current_player]}](tg://user?id={current_game.players[current_game.current_player]})"
+
+        message = bot.edit_message_text(chat_id=chat_id, message_id=current_game.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
+        current_game.message_id = message.message_id
+        current_game.game_active = True
+    else:
+        bot.answer_callback_query(call.id, "Игра уже началась или вы уже участвуете. 🚫")
 
 @bot.message_handler(commands=['leave'])
 def leave_game(message):
@@ -222,5 +270,35 @@ def handle_query(call):
             markup = current_game.render_board()
             text = f"🔪 [{current_game.player_names['X']}](tg://user?id={current_game.players['X']})  {current_game.player_symbols['X']} против [{current_game.player_names['O']}](tg://user?id={current_game.players['O']}) {current_game.player_symbols['O']} 🗡️\n\n⏳ Текущий ход: [{current_game.player_names[current_game.current_player]}](tg://user?id={current_game.players[current_game.current_player]})"
             bot.edit_message_text(chat_id=chat_id, message_id=current_game.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
+
+@bot.message_handler(regexp=r'^Кнб камень')
+def play_rock(message):
+    play_game(message, "камень"+'!')
+
+@bot.message_handler(regexp=r'^Кнб ножницы')
+def play_scissors(message):
+    play_game(message, "ножницы"+'!')
+
+@bot.message_handler(regexp=r'^Кнб бумага')
+def play_paper(message):
+    play_game(message, "бумага"+'!')
+
+def play_game(message, user_choice):
+    choices = ["камень!", "ножницы!", "бумага!"]
+    bot_choice = random.choice(choices)
+
+    result = get_result(user_choice, bot_choice)
+
+    bot.reply_to(message, f"🙋‍♂️ Твой выбор: {user_choice}\n🤖 Мой выбор: {bot_choice}\n{result}")
+
+def get_result(user_choice, bot_choice):
+    if user_choice == bot_choice:
+        return "😐 Ничья!"
+    elif (user_choice == "камень!" and bot_choice == "ножницы!") or \
+         (user_choice == "ножницы!" and bot_choice == "бумага!") or \
+         (user_choice == "бумага!" and bot_choice == "камень!"):
+        return "🏆 Ты выиграл!"
+    else:
+        return "🙁 Ты проиграл!"
 
 bot.infinity_polling()
