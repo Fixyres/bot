@@ -3,8 +3,7 @@ from telebot import types
 import random
 import logging
 
-TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
-
+TOKEN = '649977716DIrRo2gVSTSkNOD
 logging.basicConfig(level=logging.INFO)
 
 bot = telebot.TeleBot(TOKEN)
