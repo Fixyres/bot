@@ -9,6 +9,18 @@ logging.basicConfig(level=logging.INFO)
 
 bot = telebot.TeleBot(TOKEN)
 
+@bot.message_handler(func=lambda message: True, content_types=['new_chat_members'])
+def welcome_new_members(message):
+    for member in message.new_chat_members:
+        welcome_message = (
+    f"👋 Привет, <a href='tg://user?id={member.id}'>{member.first_name}</a>!\n"
+    "📖 Чтобы посмотреть правила чата, напиши <code>Правила</code>!\n"
+    "👀 Либо <code>П</code> и номер\n"
+    "(например <code>1</code>) для просмотра нужного тебе правила!"
+)
+
+        bot.send_message(message.chat.id, welcome_message, parse_mode='HTML')
+
 board_sizes = {
     "3*3": {"size": 3, "win_condition": [3]},
     "4*4": {"size": 4, "win_condition": [3, 4]},
