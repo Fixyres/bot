@@ -4,7 +4,7 @@ import random
 import logging
 import json
 
-TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
+TOKEN = ''
 
 logging.basicConfig(level=logging.INFO)
 
@@ -70,6 +70,10 @@ def unban_user(message):
 @bot.message_handler(func=lambda message: message.from_user.id in blacklisted_users)
 def handle_blacklisted_user(message):
 	None
+
+@bot.callback_query_handler(func=lambda call: call.from_user.id in blacklisted_users)
+def block_blacklisted_user_callback(call):
+    pass 
 
 @bot.message_handler(commands=['bans'])
 def get_blocked_users(message):
