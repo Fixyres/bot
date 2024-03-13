@@ -2,12 +2,49 @@ import telebot
 from telebot import types
 import random
 import logging
+import json
 
-TOKEN = 'token'
+TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
 
 logging.basicConfig(level=logging.INFO)
 
 bot = telebot.TeleBot(TOKEN)
+
+STATISTICS_FILE = 'stata.txt'
+
+def update_statistics(user_id, result):
+    with open(STATISTICS_FILE, 'a') as file:
+        file.write(f"{user_id} {result}\n")
+
+def get_user_statistics(user_id):
+    try:
+        with open(STATISTICS_FILE, 'r') as file:
+            lines = file.readlines()
+            user_stats = [line.split() for line in lines if line.startswith(str(user_id))]
+            return user_stats
+    except FileNotFoundError:
+        return print("файл с статистикой не найден")
+
+@bot.message_handler(commands=['stata'])
+def view_statistics(message):
+    user_id = message.from_user.id
+    user_stats = get_user_statistics(user_id)
+
+    if user_stats:
+        total_games = len(user_stats)
+        total_wins = sum(1 for _, result in user_stats if result == 'win')
+        total_draws = sum(1 for _, result in user_stats if result == 'draw')
+        total_losses = sum(1 for _, result in user_stats if result == 'loss')
+
+        reply_text = (
+            f"📊 Ваша статистика:\n"
+            f"🏆 Побед: {total_wins}\n"
+            f"😐 Ничьих: {total_draws}\n"
+            f"😞 Проигрышей: {total_losses}"
+        )
+        bot.reply_to(message, reply_text, parse_mode="Markdown")
+    else:
+        bot.reply_to(message, "📊 У тебя её нету...", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda message: True, content_types=['new_chat_members'])
 def welcome_new_members(message):
@@ -16,7 +53,8 @@ def welcome_new_members(message):
     f"👋 Привет, <a href='tg://user?id={member.id}'>{member.first_name}</a>!\n"
     "📖 Чтобы посмотреть правила чата, напиши <code>Правила</code>!\n"
     "👀 Либо <code>П</code> и номер\n"
-    "(например <code>1</code>) для просмотра нужного тебе правила!"
+    "(например <code>1</code>) для просмотра нужного тебе правила!\n"
+    "🕹️ И ты можешь играть в крестики нолики с другими участниками с помощю команды <code>/t</code>!"
 )
 
         bot.send_message(message.chat.id, welcome_message, parse_mode='HTML')
@@ -85,6 +123,7 @@ class TicTacToeGame:
         self.game_id = game_id
         self.size = size
         self.win_condition = win_condition
+        self.message_id = None
 
     def render_board(self):
         keyboard = types.InlineKeyboardMarkup()
@@ -99,24 +138,48 @@ class TicTacToeGame:
         return keyboard
 
     def check_winner(self, sign):
-        for row in self.game_board:
-            if any(row[i:i + self.win_condition] == [sign] * self.win_condition for i in range(self.size - self.win_condition + 1)):
+        for row in range(self.size):
+            if all(self.game_board[row][col] == sign for col in range(self.size)):
+                update_statistics(self.players[sign], 'win')
+                update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
                 return True
 
         for col in range(self.size):
-            if any(all(self.game_board[row][col] == sign for row in range(row, row + self.win_condition)) for row in range(self.size - self.win_condition + 1)):
+            if all(self.game_board[row][col] == sign for row in range(self.size)):
+                update_statistics(self.players[sign], 'win')
+                update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
                 return True
 
-        for i in range(self.size - self.win_condition + 1):
-            if all(self.game_board[i + j][i + j] == sign for j in range(self.win_condition)):
-                return True
-            if all(self.game_board[i + j][self.size - i - j - 1] == sign for j in range(self.win_condition)):
-                return True
+        if all(self.game_board[i][i] == sign for i in range(self.size)):
+            update_statistics(self.players[sign], 'win')
+            update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
+            return True
+
+        if all(self.game_board[i][self.size - 1 - i] == sign for i in range(self.size)):
+            update_statistics(self.players[sign], 'win')
+            update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
+            return True
+
+        for row in range(self.size - self.win_condition + 1):
+            for col in range(self.size - self.win_condition + 1):
+                if all(self.game_board[row + i][col + i] == sign for i in range(self.win_condition)):
+                    update_statistics(self.players[sign], 'win')
+                    update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
+                    return True
+
+                if all(self.game_board[row + i][col + self.win_condition - 1] == sign for i in range(self.win_condition)):
+                    update_statistics(self.players[sign], 'win')
+                    update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
+                    return True
 
         return False
 
     def check_draw(self):
-        return all(self.game_board[row][col] != ' ' for row in range(self.size) for col in range(self.size))
+        if all(self.game_board[row][col] != ' ' for row in range(self.size) for col in range(self.size)):
+            update_statistics(self.players['X'], 'draw')
+            update_statistics(self.players['O'], 'draw')
+            return True
+        return False
 
     def reset_game(self):
         self.game_board = [[' ' for _ in range(self.size)] for _ in range(self.size)]
@@ -125,6 +188,7 @@ class TicTacToeGame:
         self.player_names = {'X': '', 'O': ''}
         self.game_active = False
         self.leave_button_added = False
+        self.message_id = None
 
 @bot.message_handler(commands=['t'])
 def start_game(message):
@@ -202,12 +266,13 @@ def join_game(call):
 
         text = f"🔪  [{current_game.player_names['X']}](tg://user?id={current_game.players['X']}) {current_game.player_symbols['X']} против [{current_game.player_names['O']}](tg://user?id={current_game.players['O']})  {current_game.player_symbols['O']} 🗡️\n\n⏳ Текущий ход: [{current_game.player_names[current_game.current_player]}](tg://user?id={current_game.players[current_game.current_player]})\n🚧 {current_game.win_condition} в ряд!"
 
-        message = bot.edit_message_text(chat_id=chat_id, message_id=current_game.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
+        message = bot.edit_message_text(chat_id=chat_id, message_id=call.message.message_id, text=text, reply_markup=markup, parse_mode='Markdown')
         current_game.message_id = message.message_id
         current_game.game_active = True
     else:
         bot.answer_callback_query(call.id, "Игра уже началась или вы уже участвуете. 🚫")
-
+    return
+    
 @bot.message_handler(commands=['leave'])
 def leave_game(message):
     chat_id = message.chat.id
@@ -218,6 +283,13 @@ def leave_game(message):
 
     for game_id, current_game in games[chat_id]['data'].items():
         if current_game and current_game.game_active and (user_id == current_game.players['X'] or user_id == current_game.players['O']):
+            if user_id == current_game.players['X']:
+                update_statistics(current_game.players['X'], 'leave')
+                update_statistics(current_game.players['O'], 'total_games')
+            elif user_id == current_game.players['O']:
+                update_statistics(current_game.players['O'], 'leave')
+                update_statistics(current_game.players['X'], 'total_games')
+
             text = f"👋 [{message.from_user.first_name}](tg://user?id={message.from_user.id}) покинул(а) игру!\n😞 Игра окончена.\n\n🔪 [{current_game.player_names['X']}](tg://user?id={current_game.players['X']}) {current_game.player_symbols['X']} против [{current_game.player_names['O']}](tg://user?id={current_game.players['O']}) {current_game.player_symbols['O']} 🗡️\n🚧 {current_game.win_condition} в ряд!"
 
             markup = None
@@ -228,7 +300,7 @@ def leave_game(message):
             del games[chat_id]['data'][game_id]
             current_game.reset_game()
             return
-
+            
 @bot.callback_query_handler(func=lambda call: True)
 def handle_query(call):
     chat_id = call.message.chat.id
