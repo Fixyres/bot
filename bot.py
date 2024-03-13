@@ -4,7 +4,7 @@ import random
 import logging
 import json
 
-TOKEN = ''
+TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
 
 logging.basicConfig(level=logging.INFO)
 
