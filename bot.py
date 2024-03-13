@@ -4,11 +4,113 @@ import random
 import logging
 import json
 
-TOKEN = '649gqHDItuCVSODZ5srU'
+TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
 
 logging.basicConfig(level=logging.INFO)
 
 bot = telebot.TeleBot(TOKEN)
+admins_file = 'admin.txt'
+blocked_file = 'block.txt'
+users_file = 'users.txt'
+stata_file = 'stata.txt'
+admins = set()
+blacklisted_users = set()
+added_users = set()
+
+def is_admin(user_id):
+    return user_id in admins
+
+with open(admins_file, 'r') as file:
+    admins = set(map(int, file.read().splitlines()))
+
+with open(blocked_file, 'r') as file:
+    blacklisted_users = set(map(int, file.read().splitlines()))
+    
+def save_to_file(file_path, data):
+    with open(file_path, 'w') as file:
+        file.write('\n'.join(map(str, data)))
+
+def get_user_id_from_command(command):
+    try:
+        user_param = command.split()[1]
+
+        if user_param.startswith('@'):
+            user_info = bot.get_chat_member(message.chat.id, user_param)
+            return user_info.user.id
+        else:
+            return int(user_param)
+    except (IndexError, ValueError):
+        return None
+
+@bot.message_handler(commands=['block'])
+def ban_user(message):
+    user_id = get_user_id_from_command(message.text)
+
+    if user_id is not None and is_admin(message.from_user.id):
+        blacklisted_users.add(user_id)
+        save_to_file(blocked_file, blacklisted_users)
+        bot.reply_to(message, f"Пользователь с ID {user_id} добавлен в ЧС.")
+    else:
+        bot.reply_to(message, "нэт")
+        
+@bot.message_handler(commands=['unblock'])
+def unban_user(message):
+    user_id = get_user_id_from_command(message.text)
+
+    if user_id is not None and is_admin(message.from_user.id):
+        if user_id in blacklisted_users:
+            blacklisted_users.remove(user_id)
+            save_to_file(blocked_file, blacklisted_users)
+            bot.reply_to(message, f"Пользователь с ID {user_id} удален из ЧС.")
+        else:
+            bot.reply_to(message, f"Пользователь с ID {user_id} не находится в ЧС.")
+    else:
+        bot.reply_to(message, "нэт")
+        
+@bot.message_handler(func=lambda message: message.from_user.id in blacklisted_users)
+def handle_blacklisted_user(message):
+	None
+
+@bot.message_handler(commands=['bans'])
+def get_blocked_users(message):
+    if is_admin(message.from_user.id):
+        with open(blocked_file, 'rb') as file:
+            bot.send_document(message.chat.id, file, caption="ок")
+    else:
+        bot.reply_to(message, "нэт")
+
+@bot.message_handler(commands=['users'])
+def get_all_users(message):
+    if is_admin(message.from_user.id):
+        with open(users_file, 'rb') as file:
+            bot.send_document(message.chat.id, file, caption="ок")
+    else:
+        bot.reply_to(message, "нэт")
+
+stata_file = 'stata.txt'
+
+@bot.message_handler(commands=['sfile'])
+def get_stata_data(message):
+    if is_admin(message.from_user.id):
+        with open(stata_file, 'rb') as file:
+            bot.send_document(message.chat.id, file, caption="ок")
+    else:
+        bot.reply_to(message, "нэт")
+
+@bot.message_handler(commands=['admin_commands'])
+def show_admin_commands(message):
+    if is_admin(message.from_user.id):
+        admin_commands_list = [
+            "/ban [user_id] - добавить пользователя в ЧС",
+            "/unban [user_id] - удалить пользователя из ЧС",
+            "/bans - получить список заблокированных пользователей",
+            "/users - получить список всех пользователей",
+            "/stata - получить статистику данных",
+            "/id [@username] - получить user id пользователя "
+        ]
+        bot.reply_to(message, "\n".join(admin_commands_list))
+    else:
+        bot.reply_to(message, "нэт")
 
 STATISTICS_FILE = 'stata.txt'
 
@@ -413,5 +515,42 @@ def get_result(user_choice, bot_choice):
         return "🏆 Ты выиграл!"
     else:
         return "🙁 Ты проиграл!"
+
+@bot.message_handler(commands=['id'])
+def get_user_id(message):
+    if is_admin(message.from_user.id):
+        try:
+            username = message.text.split()[1].replace('@', '')
+            with open(users_file, 'r') as file:
+                for line in file:
+                    if username in line:
+                        _, user_id = line.split(' - ')
+                        formatted_user_id = f"<code>{user_id}</code>"
+                        bot.reply_to(message, f"{formatted_user_id}", parse_mode='HTML')
+                        return
+                        return
+                bot.reply_to(message, f"нн какойта")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "нэт")
+    else:
+        bot.reply_to(message, "нэт")
+
+with open(admins_file, 'r') as file:
+    admins = set(map(int, file.read().splitlines()))
+
+with open(blocked_file, 'r') as file:
+    blacklisted_users = set(map(int, file.read().splitlines()))
+
+def save_user_info_to_file(username, user_id):
+    if username not in added_users:
+        with open(users_file, 'a') as file:
+            file.write(f"@{username} - {user_id}\n")
+        added_users.add(username)
+        
+@bot.message_handler(func=lambda message: True)
+def handle_user_message(message):
+    username = message.from_user.username
+    user_id = message.from_user.id
+    save_user_info_to_file(username, user_id)
 
 bot.infinity_polling()
