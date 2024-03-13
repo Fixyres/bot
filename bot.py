@@ -4,7 +4,7 @@ import random
 import logging
 import json
 
-TOKEN = ''
+TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
 
 logging.basicConfig(level=logging.INFO)
 
@@ -101,12 +101,12 @@ def get_stata_data(message):
 def show_admin_commands(message):
     if is_admin(message.from_user.id):
         admin_commands_list = [
-            "/ban [user_id] - добавить пользователя в ЧС",
-            "/unban [user_id] - удалить пользователя из ЧС",
+            "/block user_id - добавить пользователя в ЧС",
+            "/unblock user_id - удалить пользователя из ЧС",
             "/bans - получить список заблокированных пользователей если бот ничего не выдал значит список пустой",
             "/users - получить список всех пользователей",
             "/sfile - получить статистику ❌⭕",
-            "/id [@username] - получить user id пользователя "
+            "/id @username - получить user id пользователя "
         ]
         bot.reply_to(message, "\n".join(admin_commands_list))
     else:
