@@ -141,19 +141,6 @@ def edit_blocked_users(message):
     else:
         bot.reply_to(message, "нэт")
 
-@bot.message_handler(commands=['rusers'])
-def edit_users_file(message):
-    if is_admin(message.from_user.id):
-        try:
-            new_users = [f"@{username} - {user.id}" for username in message.text.split()[1:] for user in bot.get_chat_members(message.chat.id, username)]
-            with open(users_file, 'w') as file:
-                file.write('\n'.join(new_users))
-            bot.reply_to(message, "да сэр")
-        except (IndexError, ValueError):
-            bot.reply_to(message, "тупой вот как надо: /rusers @username - userid")
-    else:
-        bot.reply_to(message, "нэт")
-
 @bot.message_handler(commands=['adminiki'])
 def get_admins_file(message):
     if is_admin(message.from_user.id):
@@ -180,7 +167,6 @@ def show_admin_commands(message):
             "/id @username - получить user id пользователя ",
             "/radmin - изменить список админов",
             "/rblock - изменить черный список",
-            "/rusers - добавить пользователя в базу данных",
             "/adminiki - список админов"
         ]
         bot.reply_to(message, "\n".join(admin_commands_list))
