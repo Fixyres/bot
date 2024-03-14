@@ -175,7 +175,8 @@ def show_admin_commands(message):
             "/id @username - получить user id пользователя ",
             "/radmin - изменить список админов",
             "/rblock - изменить черный список",
-            "/adminiki - список админов"
+            "/adminiki - список админов",
+	    "/status user_id текст - статус"
         ]
         bot.reply_to(message, "\n".join(admin_commands_list))
     else:
