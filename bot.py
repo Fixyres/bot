@@ -5,7 +5,7 @@ import logging
 import json
 import os
 
-TOKEN = '649977716HDIrRo2gu1OtuCVSTSkNODZ5srU'
+TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
 
 logging.basicConfig(level=logging.INFO)
 
