@@ -154,7 +154,7 @@ def edit_users_file(message):
     else:
         bot.reply_to(message, "нэт")
 
-@bot.message_handler(commands=['admins'])
+@bot.message_handler(commands=['adminiki'])
 def get_admins_file(message):
     if is_admin(message.from_user.id):
         try:
@@ -181,7 +181,7 @@ def show_admin_commands(message):
             "/radmin - изменить список админов",
             "/rblock - изменить черный список",
             "/rusers - добавить пользователя в базу данных",
-            "/admins - список админов"
+            "/adminiki - список админов"
         ]
         bot.reply_to(message, "\n".join(admin_commands_list))
     else:
