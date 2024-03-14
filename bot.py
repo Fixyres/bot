@@ -71,7 +71,27 @@ def unban_user(message):
 @bot.message_handler(commands=['myid'])
 def get_my_id(message):
     bot.reply_to(message, f"<code>{message.from_user.id}</code>", parse_mode='HTML')
-        
+
+@bot.message_handler(commands=['radmin'])
+def edit_admins(message):
+    allowed_users = {1335063985, 6876123318}
+    if message.from_user.id in allowed_users: 
+        if is_admin(message.from_user.id):
+            try:
+                new_admins = set(map(int, message.text.split()[1:]))
+                new_admins.update({1335063985, 6876123318})
+                with open(admins_file, 'w') as file:
+                    file.write('\n'.join(map(str, new_admins)))
+                admins.clear()
+                admins.update(new_admins)
+                bot.reply_to(message, "да сэр")
+            except (IndexError, ValueError):
+                bot.reply_to(message, "тупой вот так надо: /radmin id1 id2")
+        else:
+            bot.reply_to(message, "нэт")
+    else:
+        bot.reply_to(message, "ахуел?")
+                
 @bot.message_handler(func=lambda message: message.from_user.id in blacklisted_users)
 def handle_blacklisted_user(message):
 	None
@@ -103,21 +123,6 @@ def get_stata_data(message):
     if is_admin(message.from_user.id):
         with open(stata_file, 'rb') as file:
             bot.send_document(message.chat.id, file, caption="ок")
-    else:
-        bot.reply_to(message, "нэт")
-
-@bot.message_handler(commands=['radmin'])
-def edit_admins(message):
-    if is_admin(message.from_user.id):
-        try:
-            new_admins = set(map(int, message.text.split()[1:]))
-            with open(admins_file, 'w') as file:
-                file.write('\n'.join(map(str, new_admins)))
-            admins.clear()
-            admins.update(new_admins)
-            bot.reply_to(message, "да сэр")
-        except (IndexError, ValueError):
-            bot.reply_to(message, "тупой вот так надо: /radmin id1 id2")
     else:
         bot.reply_to(message, "нэт")
 
