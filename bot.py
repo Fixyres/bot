@@ -5,7 +5,7 @@ import logging
 import json
 import os
 
-TOKEN = ''
+TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
 
 logging.basicConfig(level=logging.INFO)
 
@@ -287,7 +287,11 @@ class TicTacToeGame:
         self.size = size
         self.win_condition = win_condition
         self.message_id = None
-
+        games[game_id] = {'win_condition': None}
+        
+    def set_win_condition(self, win_condition):
+        games[self.game_id]['win_condition'] = win_condition
+        
     def render_board(self):
         keyboard = types.InlineKeyboardMarkup()
         for row in range(self.size):
@@ -300,28 +304,21 @@ class TicTacToeGame:
 
         return keyboard
 
-    def check_winner(self, sign):
+    def check_winner(self, sign):        
+        win_condition = games[self.game_id]['win_condition']
         for row in range(self.size):
-            if all(self.game_board[row][col] == sign for col in range(self.size)):
-                update_statistics(self.players[sign], 'win')
-                update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
-                return True
+            for col in range(self.size - self.win_condition + 1):
+                if all(self.game_board[row][col + i] == sign for i in range(self.win_condition)):
+                    update_statistics(self.players[sign], 'win')
+                    update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
+                    return True
 
         for col in range(self.size):
-            if all(self.game_board[row][col] == sign for row in range(self.size)):
-                update_statistics(self.players[sign], 'win')
-                update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
-                return True
-
-        if all(self.game_board[i][i] == sign for i in range(self.size)):
-            update_statistics(self.players[sign], 'win')
-            update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
-            return True
-
-        if all(self.game_board[i][self.size - 1 - i] == sign for i in range(self.size)):
-            update_statistics(self.players[sign], 'win')
-            update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
-            return True
+            for row in range(self.size - self.win_condition + 1):
+                if all(self.game_board[row + i][col] == sign for i in range(self.win_condition)):
+                    update_statistics(self.players[sign], 'win')
+                    update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
+                    return True
 
         for row in range(self.size - self.win_condition + 1):
             for col in range(self.size - self.win_condition + 1):
@@ -330,7 +327,7 @@ class TicTacToeGame:
                     update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
                     return True
 
-                if all(self.game_board[row + i][col + self.win_condition - 1] == sign for i in range(self.win_condition)):
+                if all(self.game_board[row + self.win_condition - 1 - i][col + i] == sign for i in range(self.win_condition)):
                     update_statistics(self.players[sign], 'win')
                     update_statistics(self.players['O' if sign == 'X' else 'X'], 'loss')
                     return True
