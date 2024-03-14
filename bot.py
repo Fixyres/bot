@@ -3,8 +3,9 @@ from telebot import types
 import random
 import logging
 import json
+import os
 
-TOKEN = ''
+TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
 
 logging.basicConfig(level=logging.INFO)
 
@@ -66,6 +67,10 @@ def unban_user(message):
             bot.reply_to(message, f"Пользователь с ID {user_id} не находится в ЧС.")
     else:
         bot.reply_to(message, "нэт")
+
+@bot.message_handler(commands=['myid'])
+def get_my_id(message):
+    bot.reply_to(message, f"<code>{message.from_user.id}</code>", parse_mode='HTML')
         
 @bot.message_handler(func=lambda message: message.from_user.id in blacklisted_users)
 def handle_blacklisted_user(message):
@@ -101,6 +106,63 @@ def get_stata_data(message):
     else:
         bot.reply_to(message, "нэт")
 
+@bot.message_handler(commands=['radmin'])
+def edit_admins(message):
+    if is_admin(message.from_user.id):
+        try:
+            new_admins = set(map(int, message.text.split()[1:]))
+            with open(admins_file, 'w') as file:
+                file.write('\n'.join(map(str, new_admins)))
+            admins.clear()
+            admins.update(new_admins)
+            bot.reply_to(message, "да сэр")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "тупой вот так надо: /radmin id1 id2")
+    else:
+        bot.reply_to(message, "нэт")
+
+@bot.message_handler(commands=['rblock'])
+def edit_blocked_users(message):
+    if is_admin(message.from_user.id):
+        try:
+            new_blocked_users = set(map(int, message.text.split()[1:]))
+            with open(blocked_file, 'w') as file:
+                file.write('\n'.join(map(str, new_blocked_users)))
+            blacklisted_users.clear()
+            blacklisted_users.update(new_blocked_users)
+            bot.reply_to(message, "да сэр")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "тупой вот как надо: /rblock id1 id2 ...")
+    else:
+        bot.reply_to(message, "нэт")
+
+@bot.message_handler(commands=['rusers'])
+def edit_users_file(message):
+    if is_admin(message.from_user.id):
+        try:
+            new_users = [f"@{username} - {user.id}" for username in message.text.split()[1:] for user in bot.get_chat_members(message.chat.id, username)]
+            with open(users_file, 'w') as file:
+                file.write('\n'.join(new_users))
+            bot.reply_to(message, "да сэр")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "тупой вот как надо: /rusers @username - userid")
+    else:
+        bot.reply_to(message, "нэт")
+
+@bot.message_handler(commands=['admins'])
+def get_admins_file(message):
+    if is_admin(message.from_user.id):
+        try:
+            if os.path.exists(admins_file):
+                with open(admins_file, 'rb') as file:
+                    bot.send_document(message.chat.id, file)
+            else:
+                bot.reply_to(message, "хз не нашёл")
+        except Exception as e:
+            bot.reply_to(message, f"{e}")
+    else:
+        bot.reply_to(message, "нэт")
+
 @bot.message_handler(commands=['admin_commands'])
 def show_admin_commands(message):
     if is_admin(message.from_user.id):
@@ -110,7 +172,11 @@ def show_admin_commands(message):
             "/bans - получить список заблокированных пользователей если бот ничего не выдал значит список пустой",
             "/users - получить список всех пользователей",
             "/sfile - получить статистику ❌⭕",
-            "/id @username - получить user id пользователя "
+            "/id @username - получить user id пользователя ",
+            "/radmin - изменить список админов",
+            "/rblock - изменить черный список",
+            "/rusers - добавить пользователя в базу данных",
+            "/admins - список админов"
         ]
         bot.reply_to(message, "\n".join(admin_commands_list))
     else:
