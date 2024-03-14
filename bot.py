@@ -5,7 +5,7 @@ import logging
 import json
 import os
 
-TOKEN = ''
+TOKEN = '6499777167:AAG0JngqHDIrRo2gu1OtuCVSTSkNODZ5srU'
 
 logging.basicConfig(level=logging.INFO)
 
@@ -154,7 +154,15 @@ def get_admins_file(message):
             bot.reply_to(message, f"{e}")
     else:
         bot.reply_to(message, "нэт")
-
+def get_user_statistics(user_id):
+    try:
+        with open(STATISTICS_FILE, 'r') as file:
+            lines = file.readlines()
+            user_stats = [line.split() for line in lines if line.startswith(str(user_id))]
+            return user_stats, user_statuses.get(user_id)
+    except FileNotFoundError:
+        return [], None
+        
 @bot.message_handler(commands=['admin_commands'])
 def show_admin_commands(message):
     if is_admin(message.from_user.id):
@@ -174,40 +182,88 @@ def show_admin_commands(message):
         bot.reply_to(message, "нэт")
 
 STATISTICS_FILE = 'stata.txt'
+STATUS_FILE = 'status.txt'
+
+def load_user_statuses():
+    try:
+        with open(STATUS_FILE, 'r') as file:
+            lines = file.readlines()
+            return {int(line.split()[0]): line.split(maxsplit=1)[1].strip() for line in lines}
+    except FileNotFoundError:
+        return {}
+
+def save_user_statuses(statuses):
+    with open(STATUS_FILE, 'w') as file:
+        for user_id, status in statuses.items():
+            file.write(f"{user_id} {status}\n")
 
 def update_statistics(user_id, result):
     with open(STATISTICS_FILE, 'a') as file:
         file.write(f"{user_id} {result}\n")
 
-def get_user_statistics(user_id):
-    try:
-        with open(STATISTICS_FILE, 'r') as file:
-            lines = file.readlines()
-            user_stats = [line.split() for line in lines if line.startswith(str(user_id))]
-            return user_stats
-    except FileNotFoundError:
-        return print("файл с статистикой не найден")
+user_statuses = load_user_statuses()
+
+@bot.message_handler(commands=['status'])
+def set_user_status(message):
+    if is_admin(message.from_user.id):
+        try:
+            command_parts = message.text.split()
+            if len(command_parts) == 1:
+                user_id = message.from_user.id
+                if user_id in user_statuses:
+                    del user_statuses[user_id]
+                    save_user_statuses(user_statuses)
+                    bot.reply_to(message, f"да сэр")
+                else:
+                    bot.reply_to(message, "нэт")
+            else:
+                user_id = get_user_id_from_command(message.text)
+                if user_id is None:
+                    bot.reply_to(message, "тупи")
+                    return
+                status = ' '.join(command_parts[2:]).strip()
+                if status:
+                    user_statuses[user_id] = status
+                    save_user_statuses(user_statuses)
+                    bot.reply_to(message, f"{user_id} = {status}")
+                else:
+                    if user_id in user_statuses:
+                        del user_statuses[user_id]
+                        save_user_statuses(user_statuses)
+                        bot.reply_to(message, f"Статус для пользователя {user_id} удален.")
+                    else:
+                        bot.reply_to(message, f"У {user_id} нету статуса...")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "тупи")
+    else:
+        bot.reply_to(message, "нэт")
+
 
 @bot.message_handler(commands=['stata'])
 def view_statistics(message):
     user_id = message.from_user.id
-    user_stats = get_user_statistics(user_id)
+    user_stats, user_status = get_user_statistics(user_id)
 
     if user_stats:
         total_games = len(user_stats)
         total_wins = sum(1 for _, result in user_stats if result == 'win')
         total_draws = sum(1 for _, result in user_stats if result == 'draw')
         total_losses = sum(1 for _, result in user_stats if result == 'loss')
+        total_leaves = sum(1 for _, result in user_stats if result == 'leave')
 
         reply_text = (
             f"📊 Ваша статистика:\n"
             f"🏆 Побед: {total_wins}\n"
             f"😐 Ничьих: {total_draws}\n"
-            f"😞 Проигрышей: {total_losses}"
+            f"😞 Проигрышей: {total_losses}\n"
+            f"🚪 Выходов из игр: {total_leaves}"
         )
+        if user_status:
+            reply_text += f"\n{user_status}"
+        
         bot.reply_to(message, reply_text, parse_mode="Markdown")
     else:
-        bot.reply_to(message, "📊 У тебя её нету...", parse_mode="Markdown")
+        bot.reply_to(message, "📊 У тебя её нет...", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda message: True, content_types=['new_chat_members'])
 def welcome_new_members(message):
