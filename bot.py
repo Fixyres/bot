@@ -5,7 +5,7 @@ import logging
 import json
 import os
 
-TOKEN = ''
+TOKEN = '7133449403:AAE8TnVmdUxmgYF3rV2pcXmYbSiJCoN9SaE'
 
 logging.basicConfig(level=logging.INFO)
 
@@ -175,8 +175,7 @@ def show_admin_commands(message):
             "/id @username - получить user id пользователя ",
             "/radmin - изменить список админов",
             "/rblock - изменить черный список",
-            "/adminiki - список админов",
-	    "/status user_id текст - статус"
+            "/adminiki - список админов"
         ]
         bot.reply_to(message, "\n".join(admin_commands_list))
     else:
@@ -238,7 +237,6 @@ def set_user_status(message):
             bot.reply_to(message, "тупи")
     else:
         bot.reply_to(message, "нэт")
-
 
 @bot.message_handler(commands=['stata'])
 def view_statistics(message):
@@ -304,7 +302,7 @@ rules_dict = {
     "П17": "(Присутствует [1-60 минут (модераторам - 30)])"
 }
 
-@bot.message_handler(regexp=r'^Правило \d+$')
+@bot.message_handler(regexp=r'^Правилоааокоуоаоуоаоуоаоококтвзузубадвщсбо \d+$')
 def send_rule_by_number(message):
     rule_number = message.text.split()[1]
     rule_key = f"П{rule_number}"
@@ -314,7 +312,7 @@ def send_rule_by_number(message):
     else:
         bot.reply_to(message, "Такого правила не существует.")
 
-@bot.message_handler(regexp=r'^П\d+$')
+@bot.message_handler(regexp=r'^Пклклпошклеьпьпалал\d+$')
 def send_rule_by_number(message):
     rule_number = message.text[1:]
     rule_key = f"П{rule_number}"
@@ -324,7 +322,7 @@ def send_rule_by_number(message):
     else:
         bot.reply_to(message, "Такого правила не существует.")
 
-@bot.message_handler(regexp=r'^Правила$')
+@bot.message_handler(regexp=r'^Правилакллаоеьпьпьклплкьп$')
 def send_all_rules(message):
     rules_text = "Список всех правил:\n\n" + "\n\n".join([f"{key}: {value}" for key, value in rules_dict.items()])
     bot.reply_to(message, rules_text, parse_mode='Markdown')
